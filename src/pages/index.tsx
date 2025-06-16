@@ -2,7 +2,8 @@
 import React, { JSX, useState } from 'react';
 import {
   FaSun, FaCloud, FaCloudSun, FaCloudShowersHeavy,
-  FaSnowflake, FaSmog
+  FaSnowflake, FaSmog,  FaCloudRain,
+  FaBolt
 } from 'react-icons/fa';
 import clsx from 'clsx';
 
@@ -10,10 +11,11 @@ import clsx from 'clsx';
 const codeToIcon: Record<number, JSX.Element> = {
   0: <FaSun />, 1: <FaCloudSun />, 2: <FaCloudSun />, 3: <FaCloud />,
   45: <FaSmog />, 48: <FaSmog />,
-  51: <FaCloudShowersHeavy />, 53: <FaCloudShowersHeavy />, 55: <FaCloudShowersHeavy />,
+  51: <FaCloudShowersHeavy />, 53: <FaCloudShowersHeavy />, 55: <FaCloudShowersHeavy />, 77: <FaSnowflake />,
+  80: <FaCloudRain />, 81: <FaCloudRain />,82: <FaCloudRain />,
   61: <FaCloudShowersHeavy />, 63: <FaCloudShowersHeavy />, 65: <FaCloudShowersHeavy />,
   71: <FaSnowflake />, 73: <FaSnowflake />, 75: <FaSnowflake />,
-  85: <FaSnowflake />, 86: <FaSnowflake />
+  85: <FaSnowflake />, 86: <FaSnowflake />, 95: <FaBolt />, 96: <FaBolt />, 99: <FaBolt />
 };
 
 /* ---------- date helpers ---------- */
@@ -58,6 +60,16 @@ type WeatherJSON = {
   };
 };
 
+type WeeklyStats = {
+  avg_pressure_hPa: number | null;
+  weekly_max_temp: number | null;
+  weekly_min_temp: number | null;
+  avg_sunshine_hours: number | null;
+  most_frequent_weather_code: number | null;
+  start_date: string;
+  end_date: string;
+};
+
 /* ---------- component ---------- */
 export default function WeatherExplorer() {
   const [latInput, setLatInput] = useState('');
@@ -68,6 +80,7 @@ export default function WeatherExplorer() {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [offset, setOffset] = useState(INITIAL_OFFSET);
   const [data,   setData]   = useState<WeatherJSON | null>(null);
+  const [weekly, setWeekly] = useState<WeeklyStats | null>(null);
   const [busy,   setBusy]   = useState(false);
   const [error,  setError]  = useState<string | null>(null);
 
@@ -84,18 +97,28 @@ export default function WeatherExplorer() {
 
   /* ---------- fetch ---------- */
   async function fetchChunk(lat: number, lon: number, newOffset = offset) {
-    setBusy(true); setError(null);
+    setBusy(true);
+    setError(null);
     try {
       const { start, end } = windowForOffset(newOffset);
-      const url =
-        `${process.env.NEXT_PUBLIC_WEATHER_API_URL}/api/weather/${lat}/${lon}/${ymd(start)}/${ymd(end)}`;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error();
+      const baseUrl = process.env.NEXT_PUBLIC_WEATHER_API_URL;
+      // fetch daily
+      const dailyRes = await fetch(`${baseUrl}/api/weather/${lat}/${lon}/${ymd(start)}/${ymd(end)}`);
+      if (!dailyRes.ok) throw new Error('Daily data error');
+      const dailyJson = await dailyRes.json() as WeatherJSON;
       setCoords({ lat, lon });
-      setData(await r.json());
+      setData(dailyJson);
       setOffset(newOffset);
-    } catch { setError('Weather API error'); }
-    finally { setBusy(false); }
+      // fetch weekly stats
+      const weeklyRes = await fetch(`${baseUrl}/api/weekly/${lat}/${lon}/${ymd(start)}/${ymd(end)}`);
+      if (!weeklyRes.ok) throw new Error('Weekly data error');
+      const weeklyJson = await weeklyRes.json() as WeeklyStats;
+      setWeekly(weeklyJson);
+    } catch (e) {
+      setError('Weather API error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   /* ---------- submit handlers ---------- */
@@ -106,7 +129,8 @@ export default function WeatherExplorer() {
 
   function useMyLocation() {
     if (!navigator.geolocation) { setError('Geolocation not supported'); return; }
-    setBusy(true); setError(null);
+    setBusy(true);
+    setError(null);
     navigator.geolocation.getCurrentPosition(
       p => {
         const lat = +p.coords.latitude.toFixed(4);
@@ -277,6 +301,13 @@ export default function WeatherExplorer() {
                           {v} {data.daily_units.temperature_2m_min}
                         </td>
                       ),
+                      /* solar estimation */
+                      data.daily.sunshine_duration.map((seconds,i)=>{
+                      const hours = seconds/3600;
+                      const kWh = (hours*solarPower*solarEff).toFixed(2);
+                      return <td key={i}>{kWh} kWh</td>;
+                    }),
+                    
                     ].map((row, r) => (
                       <tr
                         key={r}
@@ -290,7 +321,20 @@ export default function WeatherExplorer() {
                 </table>
               </div>
             </section>
-
+            {/* weekly stats card */}
+        {weekly && (
+          <section className="rounded-3xl bg-white/70 backdrop-blur-md shadow-2xl ring-1 ring-white/40 p-6 space-y-4">
+            <h2 className="text-xl font-semibold">Weekly Statistics</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div><strong>Period:</strong> {weekly.start_date} – {weekly.end_date}</div>
+              <div><strong>Avg Pressure:</strong> {weekly.avg_pressure_hPa ?? 'N/A'} hPa</div>
+              <div><strong>Max Temp:</strong> {weekly.weekly_max_temp ?? 'N/A'}{data?.daily_units.temperature_2m_max}</div>
+              <div><strong>Min Temp:</strong> {weekly.weekly_min_temp ?? 'N/A'}{data?.daily_units.temperature_2m_min}</div>
+              <div><strong>Avg Sunshine:</strong> {weekly.avg_sunshine_hours ?? 'N/A'} h</div>
+              <div className="flex items-center"><strong>Most Frequent:</strong> <span className="ml-2 text-2xl">{codeToIcon[weekly.most_frequent_weather_code!]}</span></div>
+            </div>
+          </section>
+        )}
             {/* solar estimation card */}
             <section className="rounded-3xl bg-white/70 backdrop-blur-md shadow-2xl ring-1 ring-white/40 p-6 space-y-6">
               <h2 className="text-xl font-semibold">Solar-Power Estimation</h2>
