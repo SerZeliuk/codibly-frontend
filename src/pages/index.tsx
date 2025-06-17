@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, JSX } from 'react';
+import React, { useState, useEffect, JSX, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
   FaSun,
@@ -17,9 +17,7 @@ import clsx from 'clsx';
 
 
 // Dynamically load our client-only map
-const WeatherMap = dynamic(() => import('./weatherMap'), {
-  ssr: false
-});
+
 
 const codeToIcon: Record<number, JSX.Element> = {
   0: <FaSun />,
@@ -118,6 +116,17 @@ export default function WeatherExplorer() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
+  // Can be uncommented, if running `npm run dev`. More info in weatherMap.tsx 
+
+  // const WeatherMap = useMemo(
+  //   () =>
+  //     dynamic(() => import('./weatherMap'), {
+  //       loading: () => <p>A map is loading...</p>,
+  //       ssr: false,
+  //     }),
+  //   []
+  // );
   // Dark-mode state & persistence
   const [darkMode, setDarkMode] = useState(false);
   useEffect(() => {
@@ -219,11 +228,13 @@ export default function WeatherExplorer() {
             )}
           </button>
         </div>
-
+        
+        
+   {/* Can be uncommented, if running `npm run dev`. More info in weatherMap.tsx  */}
         {/* Map picker */}
-        <section className="h-80 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/40">
+        {/* <section className="h-80 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/40">
           <WeatherMap onSelect={onMapSelect} />
-        </section>
+        </section> */}
 
         <form
           onSubmit={handleSubmit}
