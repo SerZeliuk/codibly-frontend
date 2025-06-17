@@ -1,9 +1,21 @@
 'use client';
 import React, { useState } from 'react';
+import L from 'leaflet'; // ✅ use default import, no destructuring
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-type Props = { onSelect: (lat: number, lon: number) => void; };
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x.src ?? markerIcon2x,
+  iconUrl: markerIcon.src ?? markerIcon,
+  shadowUrl: markerShadow.src ?? markerShadow,
+});
+
+type Props = { onSelect: (lat: number, lon: number) => void };
 
 function LocationPicker({ onSelect }: Props) {
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -14,7 +26,7 @@ function LocationPicker({ onSelect }: Props) {
       const lng = +e.latlng.lng.toFixed(4);
       setPos({ lat, lng });
       onSelect(lat, lng);
-    }
+    },
   });
 
   return pos ? <Marker position={pos} /> : null;

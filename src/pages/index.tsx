@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fa';
 import clsx from 'clsx';
 
+
 // Dynamically load our client-only map
 const WeatherMap = dynamic(() => import('./weatherMap'), {
   ssr: false
@@ -353,7 +354,7 @@ export default function WeatherExplorer() {
                   disabled={!canPrev || busy}
                   className={clsx('rounded-xl px-4 py-1', (!canPrev || busy) && 'opacity-40')}
                 >
-                  ◀ Prev
+                  ◀ 
                 </button>
                 <span className="font-semibold dark:text-white">
                   {data.daily.time[0]} – {data.daily.time[6]}
@@ -363,7 +364,7 @@ export default function WeatherExplorer() {
                   disabled={!canNext || busy}
                   className={clsx('rounded-xl px-4 py-1', (!canNext || busy) && 'opacity-40')}
                 >
-                  Next ▶
+                  ▶
                 </button>
               </div>
 
@@ -384,7 +385,7 @@ export default function WeatherExplorer() {
                   <tbody>
                     {[
                       data.daily.weather_code.map((c, i) => (
-                        <td key={i} className="py-4 text-3xl">
+                        <td key={i} className="py-4 text-3xl text-gray-700 dark:text-gray-100 text-center align-middle">
                           {codeToIcon[c] ?? <FaCloud />}
                         </td>
                       )),
